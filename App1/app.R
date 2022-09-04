@@ -1,65 +1,62 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 ####################################
 # Data Professor                   #
 # http://youtube.com/dataprofessor #
 # http://github.com/dataprofessor  #
 ####################################
 
-# Modified from Winston Chang, 
-# https://shiny.rstudio.com/gallery/shiny-theme-selector.html
+# Modified from https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/
 
-# Concepts about Reactive programming used by Shiny, 
-# https://shiny.rstudio.com/articles/reactivity-overview.html
-
-# Load R packages
 library(shiny)
-library(shinythemes)
+data(airquality)
 
+# Define UI for app that draws a histogram ----
+ui <- fluidPage(
+  
+  # App title ---
+  titlePanel("Ozone level!"),
+  
+  # Sidebar layout with input and output definitions ----
+  sidebarLayout(
+    
+    # Sidebar panel for inputs ----
+    sidebarPanel(
+      
+      # Input: Slider for the number of bins ----
+      sliderInput(inputId = "bins",
+                  label = "Number of bins:",
+                  min = 1,
+                  max = 50,
+                  value = 30)
+      
+    ),
+    
+    # Main panel for displaying outputs ----
+    mainPanel(
+      
+      # Output: Histogram ----
+      plotOutput(outputId = "distPlot")
+      
+    )
+  )
+)
 
-# Define UI
-ui <- fluidPage(theme = shinytheme("superhero"),
-                navbarPage(
-                  # theme = "cerulean",  # <--- To use a theme, uncomment this
-                  "My first app",
-                  tabPanel("Navbar 1",
-                           sidebarPanel(
-                             tags$h3("Input:"),
-                             textInput("txt1", "Given Name:", ""),
-                             textInput("txt2", "Surname:", ""),
-                             
-                           ), # sidebarPanel
-                           mainPanel(
-                             h1("Header 1"),
-                             
-                             h4("Output 1"),
-                             verbatimTextOutput("txtout"),
-                             
-                           ) # mainPanel
-                           
-                  ), # Navbar 1, tabPanel
-                  tabPanel("Navbar 2", "This panel is intentionally left blank"),
-                  tabPanel("Navbar 3", "This panel is intentionally left blank")
-                  
-                ) # navbarPage
-) # fluidPage
-
-
-# Define server function  
+# Define server logic required to draw a histogram ----
 server <- function(input, output) {
   
-  output$txtout <- renderText({
-    paste( input$txt1, input$txt2, sep = " " )
+  
+  output$distPlot <- renderPlot({
+    
+    x    <- airquality$Ozone
+    x    <- na.omit(x)
+    bins <- seq(min(x), max(x), length.out = input$bins + 1)
+    
+    hist(x, breaks = bins, col = "#75AADB", border = "black",
+         xlab = "Ozone level",
+         main = "Histogram of Ozone level")
+    
   })
-} # server
+  
+}
 
-
-# Create Shiny object
+# Create Shiny app ----
 shinyApp(ui = ui, server = server)
