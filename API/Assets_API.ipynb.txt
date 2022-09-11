@@ -1,0 +1,1100 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "satisfactory-europe",
+   "metadata": {
+    "id": "34326fa1-f7b6-4daa-a294-f715defc9913"
+   },
+   "source": [
+    "# How to look up and create data assets via RESTful API\n",
+    "\n",
+    "This notebook provides examples for managing assets using the Watson Data API.\n",
+    "You can connect to a Catalog or to an Analytics project.\n",
+    "\n",
+    "Steps covered:\n",
+    "* Search an existing asset by name\n",
+    "* Get detailed metadata\n",
+    "* Download the file, aka attachment\n",
+    "* Create a new data asset\n",
+    "* Publish an asset from the project to a catalog\n",
+    "\n",
+    "Documentation\n",
+    "* Concepts and overview https://cloud.ibm.com/apidocs/watson-data-api-cpd#assets\n",
+    "* API endpoints for assets https://cloud.ibm.com/apidocs/watson-data-api-cpd#create"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "radical-rotation",
+   "metadata": {
+    "id": "7459fdb6-e168-48d9-8701-b1abdd0e55b6"
+   },
+   "source": [
+    "#### How to run this example\n",
+    "\n",
+    "In any Analytics project:\n",
+    "1. Upload the file cpd_utilities40.py as a data asset. In a v4 git integrated project place the notebook and the .py file in the same directory.\n",
+    "2. Manually upload a data asset to the current project or pick an existing one.\n",
+    "3. Create a new new notebook \"from file\" using this notebook as input file, select a Python environment.\n",
+    "4. Set the variables ASSET_NAME and CATALOG_NAME below.\n",
+    "5. Run all notebook cells."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "polished-stage",
+   "metadata": {
+    "id": "5bb564cf-44e8-42a5-baa3-16952c512529",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# This sample code is provided \"as is\", without warranty or support of any kind."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "designing-organization",
+   "metadata": {
+    "id": "0a3a06e6-6f83-454c-bbd2-f8a28be7c48d"
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "individual-background",
+   "metadata": {
+    "id": "896f15b7-317c-41d7-bd0e-e598e1bac607",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "CATALOG_NAME=\"GregorCat\"\n",
+    "# If CATALOG_NAME is not set the current project will be used.\n",
+    "ASSET_NAME=\"iris_nb.csv\"   # name of an existing data assets\n",
+    "ASSET_NAME=\"tiny_guides.json\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "secure-clock",
+   "metadata": {
+    "id": "f8cb058d-3521-4441-bbae-f711f0c02a36",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# %load ../notebook_init.py\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "permanent-ending",
+   "metadata": {
+    "id": "14c70d3f-b596-4506-b485-0258a25f112c",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import sys\n",
+    "sys.path.insert(0,'/project_data/data_asset') # path to cpd_utilities40.py\n",
+    "sys.path.insert(0,'/userfs/assets/data_asset') # with v4 git integration\n",
+    "\n",
+    "\n",
+    "import os\n",
+    "os.environ[\"CPD_REQUEST_SHOW_CURL\"] = \"1\"   # used in cpd_utilities40\n",
+    "\n",
+    "import cpd_utilities40 as cpd_util\n",
+    "cpd_conn = cpd_conn_prj = cpd_util.cpd_conn_default_project()\n",
+    "#cpd_conn = cpd_util.cpd_conn_space(name=\"wmltest\")\n",
+    "#os.environ[\"SPACE_ID\"] = cpd_conn[\"space_id\"]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "stone-grain",
+   "metadata": {
+    "id": "4dbd3187-1271-4449-ba53-2e1319e17ff0",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X GET -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/catalogs?version=2021-06-01&project_id=86df9bdf-e427-49e2-96ec-3e9d9d065082&userfs=true'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "'14d8ba82-5fcf-42e6-b4de-9e3ba2738141'"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "\n",
+    "# GET /v2/catalogs\n",
+    "\n",
+    "catalog_id = None\n",
+    "if CATALOG_NAME:\n",
+    "    cats = cpd_util.cpd_rest_request(cpd_conn, \"GET\", f\"/v2/catalogs\").json()\n",
+    "    #for cat in cats[\"catalogs\"] : print(cat[\"metadata\"][\"guid\"],cat[\"entity\"][\"name\"])\n",
+    "    catalog_id = next(cat[\"metadata\"][\"guid\"] for cat in cats[\"catalogs\"] if cat[\"entity\"][\"name\"] == CATALOG_NAME)\n",
+    "    # next will raise StopIteration if env with given name does not exist\n",
+    "catalog_id"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "technical-column",
+   "metadata": {
+    "id": "2ed4b736-fd91-4c33-8e27-5aa7cffcab2f",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "if catalog_id:\n",
+    "    cpd_conn_cat = cpd_conn_prj.copy()\n",
+    "    del cpd_conn_cat[\"project_id\"]\n",
+    "    if \"userfs\" in cpd_conn_cat: del cpd_conn_cat[\"userfs\"]\n",
+    "    cpd_conn_cat[\"catalog_id\"] = catalog_id\n",
+    "    cpd_conn = cpd_conn_cat\n",
+    "else:\n",
+    "    cpd_conn = cpd_conn_prj"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "backed-oasis",
+   "metadata": {
+    "id": "a5ab2558-9d0e-4c27-a0e7-557883eb90a3",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Use current project by default in cpdctl\n",
+    "# inClusterEnvironmentContext is automatically defined by cpdctl\n",
+    "if catalog_id:\n",
+    "    os.environ[\"CPD_SCOPE\"] = f\"cpd://inClusterEnvironmentContext/catalogs/{catalog_id}\"\n",
+    "else:\n",
+    "    os.environ[\"CPD_SCOPE\"] = f\"cpd://inClusterEnvironmentContext/projects/{os.environ['PROJECT_ID']}\"\n",
+    "    #os.environ[\"CPD_SCOPE\"] = f\"cpd://inClusterEnvironmentContext/spaces/{os.environ['SPACE_ID']}\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "necessary-genetics",
+   "metadata": {
+    "id": "72eb274d-aef9-4b33-84a2-6b30c086dcd1",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X GET -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/asset_files?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n",
+      "Request failed : 403\n",
+      "https://internal-nginx-svc:12443/v2/asset_files?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141\n",
+      "exception: REST returned code 403 \"{\"code\":403,\"error\":\"Forbidden\",\"reason\":\"Permission denied to non service.\",\"message\":\"You do not have permission to perform this action.\"}\"\n"
+     ]
+    }
+   ],
+   "source": [
+    "# GET /v2/asset_files\n",
+    "#\n",
+    "get_asset_files = None\n",
+    "try:\n",
+    "    get_asset_files = cpd_util.cpd_rest_request(cpd_conn, \"GET\", f\"/v2/asset_files\").json()\n",
+    "except Exception as exc:\n",
+    "    # For catalog: 403,\"error\":\"Forbidden\",\"reason\":\"Permission denied to non service.\"\n",
+    "    # Would need credentials of an internal service account.\n",
+    "    print(\"exception:\",exc)\n",
+    "    pass\n",
+    "get_asset_files"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "desirable-fisher",
+   "metadata": {
+    "id": "82d8bd6b-0a77-4dbc-a0dc-19f9185f93c8"
+   },
+   "source": [
+    "## Search an asset by name\n",
+    "\n",
+    "https://cloud.ibm.com/apidocs/watson-data-api-cpd#search-asset-type-metadata-name\n",
+    "\n",
+    "`POST /v2/asset_types/{type_name}/search`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "natural-friendly",
+   "metadata": {
+    "id": "6bc0f633-31bc-4988-9bfe-ee3c8b307b50",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X POST -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    -H 'Content-Type: application/json' \\\n",
+      "    -d '{\"query\": \"asset.name:tiny_guides.json\"}' \\\n",
+      "    'https://internal-nginx-svc:12443/v2/asset_types/data_asset/search?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'total_rows': 1,\n",
+       " 'results': [{'metadata': {'usage': {'last_updated_at': '2022-07-01T15:03:00Z',\n",
+       "     'last_updater_id': '1000331006',\n",
+       "     'last_update_time': 1656687780309,\n",
+       "     'last_accessed_at': '2022-07-01T15:03:00Z',\n",
+       "     'last_access_time': 1656687780309,\n",
+       "     'last_accessor_id': '1000331006',\n",
+       "     'access_count': 0},\n",
+       "    'rov': {'mode': 0,\n",
+       "     'collaborator_ids': {},\n",
+       "     'member_roles': {'1000331006': {'user_iam_id': '1000331006',\n",
+       "       'roles': ['OWNER']}}},\n",
+       "    'is_primary_attachment_downloadable': True,\n",
+       "    'name': 'tiny_guides.json',\n",
+       "    'description': '',\n",
+       "    'tags': [],\n",
+       "    'asset_type': 'data_asset',\n",
+       "    'origin_country': 'united states',\n",
+       "    'resource_key': 'tiny_guides.json',\n",
+       "    'rating': 0.0,\n",
+       "    'total_ratings': 0,\n",
+       "    'catalog_id': '14d8ba82-5fcf-42e6-b4de-9e3ba2738141',\n",
+       "    'created': 0,\n",
+       "    'created_at': '2022-07-01T15:02:57Z',\n",
+       "    'owner_id': '1000331006',\n",
+       "    'size': 54,\n",
+       "    'version': 0.0,\n",
+       "    'asset_state': 'available',\n",
+       "    'asset_attributes': ['data_asset', 'asset_terms'],\n",
+       "    'asset_id': '1b9728ba-01ce-4f94-a899-eb9cf0dd13f9',\n",
+       "    'asset_category': 'USER',\n",
+       "    'creator_id': '1000331006'},\n",
+       "   'href': '/v2/assets/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'}]}"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#q = { \"query\":\"*:*\" }\n",
+    "#q = { \"query\":\"asset.name:iris_nb.csv\" } \n",
+    "q = { \"query\" : f\"asset.name:{ASSET_NAME}\" } \n",
+    "\n",
+    "search_meta = cpd_util.cpd_rest_request(cpd_conn, \"POST\", f\"/v2/asset_types/data_asset/search\",postdata=q).json()\n",
+    "search_meta  # does not have details about attachment"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "brief-tension",
+   "metadata": {
+    "id": "70de67be-5505-47da-907d-7cdaed43cac3",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'1b9728ba-01ce-4f94-a899-eb9cf0dd13f9'"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "search_meta[\"results\"][0][\"metadata\"][\"asset_id\"]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "id": "attached-litigation",
+   "metadata": {
+    "id": "f5da1a3f-4038-407f-8fb3-42e7d846bdb8",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X GET -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/assets/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'metadata': {'usage': {'last_updated_at': '2022-07-01T15:03:00Z',\n",
+       "   'last_updater_id': '1000331006',\n",
+       "   'last_update_time': 1656687780309,\n",
+       "   'last_accessed_at': '2022-07-01T15:03:00Z',\n",
+       "   'last_access_time': 1656687780309,\n",
+       "   'last_accessor_id': '1000331006',\n",
+       "   'access_count': 0},\n",
+       "  'rov': {'mode': 0,\n",
+       "   'collaborator_ids': {},\n",
+       "   'member_roles': {'1000331006': {'user_iam_id': '1000331006',\n",
+       "     'roles': ['OWNER']}}},\n",
+       "  'name': 'tiny_guides.json',\n",
+       "  'description': '',\n",
+       "  'tags': [],\n",
+       "  'asset_type': 'data_asset',\n",
+       "  'origin_country': 'united states',\n",
+       "  'resource_key': 'tiny_guides.json',\n",
+       "  'rating': 0.0,\n",
+       "  'total_ratings': 0,\n",
+       "  'catalog_id': '14d8ba82-5fcf-42e6-b4de-9e3ba2738141',\n",
+       "  'created': 1656687777540,\n",
+       "  'created_at': '2022-07-01T15:02:57Z',\n",
+       "  'owner_id': '1000331006',\n",
+       "  'size': 54,\n",
+       "  'version': 2.0,\n",
+       "  'asset_state': 'available',\n",
+       "  'asset_attributes': ['data_asset', 'asset_terms'],\n",
+       "  'asset_id': '1b9728ba-01ce-4f94-a899-eb9cf0dd13f9',\n",
+       "  'asset_category': 'USER',\n",
+       "  'creator_id': '1000331006'},\n",
+       " 'entity': {'asset_terms': {'list': []},\n",
+       "  'data_asset': {'mime_type': 'application/json', 'dataset': False}},\n",
+       " 'attachments': [{'id': '1289f3ed-7a82-4e28-aafc-b80e1788bdb0',\n",
+       "   'version': 2.0,\n",
+       "   'asset_type': 'data_asset',\n",
+       "   'name': 'tiny_guides.json',\n",
+       "   'mime': 'application/json',\n",
+       "   'datasource_type': '81bafdbd-b7c6-45c5-a4fd-6ec135f66f4e',\n",
+       "   'creator_id': '1000331006',\n",
+       "   'create_time': 1656687778326,\n",
+       "   'size': 54,\n",
+       "   'is_remote': False,\n",
+       "   'is_managed': True,\n",
+       "   'is_referenced': False,\n",
+       "   'is_object_key_read_only': False,\n",
+       "   'is_user_provided_path_key': False,\n",
+       "   'transfer_complete': True,\n",
+       "   'is_partitioned': False,\n",
+       "   'complete_time_ticks': 1656687780308,\n",
+       "   'user_data': {},\n",
+       "   'test_doc': 0,\n",
+       "   'handle': {'type': 'assetfiles',\n",
+       "    'key': '14d8ba82-5fcf-42e6-b4de-9e3ba2738141/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9/1289f3ed-7a82-4e28-aafc-b80e1788bdb0',\n",
+       "    'upload_id': 'done',\n",
+       "    'max_part_num': 1},\n",
+       "   'usage': {'access_count': 0.0,\n",
+       "    'last_accessor_id': '1000331006',\n",
+       "    'last_access_time': 1656687778326.0}}],\n",
+       " 'href': '/v2/assets/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'}"
+      ]
+     },
+     "execution_count": 22,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Get detailed metadata incl attachments\n",
+    "asset_id = search_meta[\"results\"][0][\"metadata\"][\"asset_id\"]\n",
+    "meta = cpd_util.cpd_rest_request(cpd_conn,\"GET\",\"/v2/assets/\"+asset_id).json()\n",
+    "meta"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "transparent-accused",
+   "metadata": {
+    "id": "511e2e5f-6534-4605-ae14-85c9abf09774"
+   },
+   "source": [
+    "### Get and download asset attachment"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "id": "primary-indianapolis",
+   "metadata": {
+    "id": "e88bca9f-f909-47f1-9905-ead0c1a97f21",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X GET -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/assets/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9/attachments/1289f3ed-7a82-4e28-aafc-b80e1788bdb0?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'attachment_id': '1289f3ed-7a82-4e28-aafc-b80e1788bdb0',\n",
+       " 'asset_type': 'data_asset',\n",
+       " 'is_partitioned': False,\n",
+       " 'name': 'tiny_guides.json',\n",
+       " 'mime': 'application/json',\n",
+       " 'created_at': '2022-07-01T15:02:58Z',\n",
+       " 'datasource_type': '81bafdbd-b7c6-45c5-a4fd-6ec135f66f4e',\n",
+       " 'url': '/v2/asset_files/14d8ba82-5fcf-42e6-b4de-9e3ba2738141/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9/1289f3ed-7a82-4e28-aafc-b80e1788bdb0?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141&signature=yG58qBAIqwlbPC1X5ofZfQ%3D%3D%3ALS%2BChSXJVo12TWbwOFM%2BmVQG%2FKecC7CYL8nH2bj2Al%2BmZ5hQQJQbL4S0Zl%2F8S2Ay600vCYMwDaps9yognmci6VQn6crDomfP4r7NuPyqQZOeUCMV6tCkb%2FL2V5SUV4JP77CWL3fs1cI35rIto3RnhiE7xz36vnRc5xZtk5BCYMiuhZgP22HsTFFboRgM3A4P3VGxcyxmVWRCpzd7Qfb4l5TZ1fu5SVBWIANDeApqvvo1v9iEA0IjQ6Q2MpRzcVG0r5nWj8Xr1uL0kmpmbRMSvfDSISDihQVvEn7ZKISgc8WF%2BQ4gj3Lzr4TqvvhmTjrLkOt9uL5gIJZZEhzUIlWYU7qAA1%2FdCFrVaPI3psIlc3ith7xAXoVwn7bOZUXZeLMSXp27aw%3D%3D',\n",
+       " 'transfer_complete': True,\n",
+       " 'size': 54,\n",
+       " 'user_data': {},\n",
+       " 'creator_id': '1000331006',\n",
+       " 'usage': {'access_count': 1,\n",
+       "  'last_accessor_id': '1000331006',\n",
+       "  'last_access_time': 1657005276838},\n",
+       " 'href': '/v2/assets/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9/attachments/1289f3ed-7a82-4e28-aafc-b80e1788bdb0?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'}"
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Get and save attachment\n",
+    "att = meta['attachments'][0]  # notebook asset has the nb file as (first) attachment\n",
+    "asset_name = att['name']\n",
+    "assert( att['asset_type'] == 'data_asset' )\n",
+    "file_name = \"tmp_\"+asset_name  # att.get('name') for a notebook is not always useful\n",
+    "att_details=cpd_util.cpd_rest_request(cpd_conn,\"GET\",f\"/v2/assets/{asset_id}/attachments/{att['id']}\").json()\n",
+    "att_details"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "id": "falling-litigation",
+   "metadata": {
+    "id": "c97aabe5-a0e8-4631-b570-1eb660f94f23",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Download content from the signed url"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "id": "challenging-myrtle",
+   "metadata": {
+    "id": "3bd8fae3-3a22-4901-aea3-f9368f93c135",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X GET -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/asset_files/14d8ba82-5fcf-42e6-b4de-9e3ba2738141/1b9728ba-01ce-4f94-a899-eb9cf0dd13f9/1289f3ed-7a82-4e28-aafc-b80e1788bdb0?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141&signature=yG58qBAIqwlbPC1X5ofZfQ%3D%3D%3ALS%2BChSXJVo12TWbwOFM%2BmVQG%2FKecC7CYL8nH2bj2Al%2BmZ5hQQJQbL4S0Zl%2F8S2Ay600vCYMwDaps9yognmci6VQn6crDomfP4r7NuPyqQZOeUCMV6tCkb%2FL2V5SUV4JP77CWL3fs1cI35rIto3RnhiE7xz36vnRc5xZtk5BCYMiuhZgP22HsTFFboRgM3A4P3VGxcyxmVWRCpzd7Qfb4l5TZ1fu5SVBWIANDeApqvvo1v9iEA0IjQ6Q2MpRzcVG0r5nWj8Xr1uL0kmpmbRMSvfDSISDihQVvEn7ZKISgc8WF%2BQ4gj3Lzr4TqvvhmTjrLkOt9uL5gIJZZEhzUIlWYU7qAA1%2FdCFrVaPI3psIlc3ith7xAXoVwn7bOZUXZeLMSXp27aw%3D%3D&version=2021-06-01'\n"
+     ]
+    }
+   ],
+   "source": [
+    "res = cpd_util.cpd_rest_request(cpd_conn,\"GET\",att_details[\"url\"])\n",
+    "with open( file_name, 'wb') as f:\n",
+    "    f.write(res.content)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "id": "generic-break",
+   "metadata": {
+    "id": "067c023c-725d-40b5-b351-f55fd3b593d4",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Assets_API.ipynb  cpd_utilities40.py  __pycache__  tmp_tiny_guides.json\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "running-width",
+   "metadata": {
+    "id": "258190e8-1ab3-4522-b375-c9bd519c0acb"
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "turkish-touch",
+   "metadata": {
+    "id": "32e26ab4-a2ab-461f-a34e-c223cbe33b90"
+   },
+   "source": [
+    "## Create a new data asset from a file\n",
+    "\n",
+    "https://cloud.ibm.com/apidocs/watson-data-api-cpd#putassetfile\n",
+    "\n",
+    "`PUT /v2/asset_files/{path}`\n",
+    "\n",
+    "Assets in CP4D have \"attachments\" that refer to the actual file / content.\n",
+    "We demonstrate two different types of attachments: **managed** and **referenced**.\n",
+    "\n",
+    "The referenced attachment contains an object_key. The value is set by the user; it's a file path.\n",
+    "The managed attacchment does not have an object_key. The location of the uploadd file content is set by CP4D.\n",
+    "\n",
+    "A managed asset can be created in both a catalog and a project.\n",
+    "A referenced asset can be created in a project. But a regular CP4D user can't directly create a referenced asset in a catalog. The latter would require authentication with an internal service account.\n",
+    "However, an asset from a project can be published to a catalog."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "id": "needed-aquatic",
+   "metadata": {
+    "id": "a803c001-7613-4be4-9256-43b1f51125a8",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from pathlib import Path"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "id": "rational-dependence",
+   "metadata": {
+    "id": "8980a5e1-d2ca-4572-8e51-a0a6f0c71ddc",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "filename = \"tmp_\"+ASSET_NAME   # \"tmp_tiny_guides.json\"\n",
+    "asset_type = \"data_asset\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "id": "junior-portrait",
+   "metadata": {
+    "id": "00c7124e-ad18-458d-9a3e-0a259d9cd9e9",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# https://www.iana.org/assignments/media-types/\n",
+    "suffix_to_mime = {\".txt\":\"text/plain\", \n",
+    "                  \".sh\":\"text/plain\", \n",
+    "                  \".py\":\"text/plain\", \n",
+    "                  \".csv\" : \"text/csv\",\n",
+    "                  \".pdf\":\"application/pdf\",\n",
+    "                  \".json\":\"application/json\",\n",
+    "                 }\n",
+    "mime = suffix_to_mime.get(Path(filename).suffix.lower(),\"text/plain\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "virgin-appearance",
+   "metadata": {
+    "id": "4f639029-0edc-4243-9673-17d28a8ca947"
+   },
+   "source": [
+    "### Option: Create a new asset with managed file attachment\n",
+    "\n",
+    "CP4D completely controls where the asset content is stored internally."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "id": "happy-terrorist",
+   "metadata": {
+    "id": "8c5bcb74-24ec-4f2d-8a00-208144eaf955",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X POST -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    -H 'Content-Type: application/json' \\\n",
+      "    -d '{\"metadata\": {\"name\": \"managed-tmp_tiny_guides.json\", \"asset_type\": \"data_asset\", \"origin_country\": \"de\"}, \"entity\": {\"data_asset\": {\"mime_type\": \"application/json\", \"dataset\": false}}, \"attachments\": [{\"asset_type\": \"data_asset\", \"mime\": \"application/json\"}]}' \\\n",
+      "    'https://internal-nginx-svc:12443/v2/assets?duplicate_action=IGNORE&version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'metadata': {'usage': {'last_updated_at': '2022-07-05T07:16:23Z',\n",
+       "   'last_updater_id': '1000331006',\n",
+       "   'last_update_time': 1657005383064,\n",
+       "   'last_accessed_at': '2022-07-05T07:16:23Z',\n",
+       "   'last_access_time': 1657005383064,\n",
+       "   'last_accessor_id': '1000331006',\n",
+       "   'access_count': 0},\n",
+       "  'rov': {'mode': 0,\n",
+       "   'collaborator_ids': {},\n",
+       "   'member_roles': {'1000331006': {'user_iam_id': '1000331006',\n",
+       "     'roles': ['OWNER']}}},\n",
+       "  'name': 'managed-tmp_tiny_guides.json',\n",
+       "  'description': '',\n",
+       "  'tags': [],\n",
+       "  'asset_type': 'data_asset',\n",
+       "  'origin_country': 'de',\n",
+       "  'resource_key': 'managed-tmp_tiny_guides.json',\n",
+       "  'rating': 0.0,\n",
+       "  'total_ratings': 0,\n",
+       "  'catalog_id': '14d8ba82-5fcf-42e6-b4de-9e3ba2738141',\n",
+       "  'created': 1657005383064,\n",
+       "  'created_at': '2022-07-05T07:16:23Z',\n",
+       "  'owner_id': '1000331006',\n",
+       "  'size': 0,\n",
+       "  'version': 2.0,\n",
+       "  'asset_state': 'available',\n",
+       "  'asset_attributes': ['data_asset'],\n",
+       "  'asset_id': 'be4f9719-0d60-4374-88cd-74e4c16e90b6',\n",
+       "  'asset_category': 'USER',\n",
+       "  'creator_id': '1000331006'},\n",
+       " 'entity': {'data_asset': {'mime_type': 'application/json', 'dataset': False}},\n",
+       " 'href': '/v2/assets/be4f9719-0d60-4374-88cd-74e4c16e90b6?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141',\n",
+       " 'asset_id': 'be4f9719-0d60-4374-88cd-74e4c16e90b6',\n",
+       " 'attachments': [{'attachment_id': 'd652905e-a9d9-4028-8a3e-a6050a713727',\n",
+       "   'asset_type': 'data_asset',\n",
+       "   'attachment_type': 'local',\n",
+       "   'upload_id': 'f74e7373-859c-4813-a9b5-dd512bb16123',\n",
+       "   'data_partitions': 1,\n",
+       "   'start_part_num': 1,\n",
+       "   'url1': '/v2/asset_files/14d8ba82-5fcf-42e6-b4de-9e3ba2738141/be4f9719-0d60-4374-88cd-74e4c16e90b6/d652905e-a9d9-4028-8a3e-a6050a713727?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141&signature=%2FhAtu5%2F5Z6GSDe7DrjrVCw%3D%3D%3A4pY9u8EeaEpZZOToC9l0pVXu%2F%2F8dUDnGigWoqx2OS3IxCQ8e31LlOmLHkGhhq38P%2B1dq%2Fe7QDH16wXFFU%2BgnnURj2BYAM21K%2F7n%2FIqeeFuAQ%2B4LHSQ2hstsMBZCwAhHfgLIY%2Bya5rozB2YESaLXH9P9yGjs9SeOaLC9j6ZVOfuRdZyiPzYnQEPrHFRuOuejv8C4tHTcdMmnRGnxLMPVUpqNZYG6qNaPorJS7Bg9%2F%2FbN6ThJWOM1qhyqJLZaGHClReETE9Y9%2FDpnyAoeFyeccmxxW38ivVs0OV8tqbpkYJVctIEsyMzKKU%2FPW1A%3D%3D',\n",
+       "   'datasource_type': '81bafdbd-b7c6-45c5-a4fd-6ec135f66f4e',\n",
+       "   'is_partitioned': False,\n",
+       "   'mime': 'application/json',\n",
+       "   'user_data': {},\n",
+       "   'href': '/v2/assets/be4f9719-0d60-4374-88cd-74e4c16e90b6/attachments/d652905e-a9d9-4028-8a3e-a6050a713727?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141',\n",
+       "   'asset_category': 'USER'}]}"
+      ]
+     },
+     "execution_count": 30,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "    # Create asset and managed attachment, no file uploaded yet\n",
+    "    #    POST /v2/assets\n",
+    "    newmeta = {\n",
+    "        \"metadata\": {\n",
+    "            \"name\": \"managed-\"+filename,\n",
+    "            \"asset_type\": asset_type,\n",
+    "            \"origin_country\": \"de\",  # required key in CP4D v3.0 and v3.5, incl 3.5.3\n",
+    "        },\n",
+    "        \"entity\": {\"data_asset\": {\"mime_type\": mime, \"dataset\": False}},\n",
+    "        #\"entity\": {},  # works as well\n",
+    "        \"attachments\" : [{\n",
+    "            \"asset_type\": asset_type,\n",
+    "            \"mime\": mime,\n",
+    "        }],\n",
+    "    }\n",
+    "    # optionally add query param:  ?duplicate_action=IGNORE\n",
+    "    meta_managed = cpd_util.cpd_rest_request(\n",
+    "        cpd_conn, \"POST\", \"/v2/assets?duplicate_action=IGNORE\", newmeta\n",
+    "    ).json()\n",
+    "    meta_managed"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "id": "guilty-china",
+   "metadata": {
+    "id": "57eac180-ca6e-4c66-8fd0-35882543829a",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "{\"status\":\"Asset created: The asset was successfully uploaded.\"}"
+     ]
+    }
+   ],
+   "source": [
+    "full_url1 = os.environ[\"RUNTIME_ENV_APSX_URL\"] + meta_managed[\"attachments\"][0][\"url1\"]\n",
+    "#res = cpd_util.cpd_rest_request(\n",
+    "#        cpd_conn, \"PUT\",full_url1,files={'file': open(filename, 'rb')})\n",
+    "#res.text\n",
+    "#os.environ[\"URL1\"]=full_url1\n",
+    "# The PUT request does not even need the bearer token aas the URL is signed\n",
+    "#!echo PUT \"{full_url1}\" -F \"file=@{filename}\"\n",
+    "!curl -k -X PUT \"{full_url1}\" -H \"Content-Type: multipart/form-data\" -F \"file=@{filename}\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "id": "tamil-publication",
+   "metadata": {
+    "id": "c7683165-8c53-4d25-b6c2-f4ffcfc0bece",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X POST -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/assets/be4f9719-0d60-4374-88cd-74e4c16e90b6/attachments/d652905e-a9d9-4028-8a3e-a6050a713727/complete?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'attachment_id': 'd652905e-a9d9-4028-8a3e-a6050a713727',\n",
+       " 'asset_type': 'data_asset',\n",
+       " 'mime': 'application/json',\n",
+       " 'size': 54}"
+      ]
+     },
+     "execution_count": 32,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# POST /v2/assets/{asset_id}/attachments/{attachment_id}/complete?catalog_id={catalog_id}\n",
+    "# Does not apply to remote or referenced attachments.\n",
+    "parts=meta_managed[\"attachments\"][0][\"href\"].split(\"?\")\n",
+    "#parts[0] + \"/complete?\" + parts[1]\n",
+    "cpd_util.cpd_rest_request(\n",
+    "        cpd_conn, \"POST\", parts[0] + \"/complete\"\n",
+    "    ).json()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "id": "promising-college",
+   "metadata": {
+    "id": "8323ab2b-e988-435f-881e-5fc3cd047892",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X GET -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    'https://internal-nginx-svc:12443/v2/assets/be4f9719-0d60-4374-88cd-74e4c16e90b6?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'metadata': {'usage': {'last_updated_at': '2022-07-05T07:16:28Z',\n",
+       "   'last_updater_id': '1000331006',\n",
+       "   'last_update_time': 1657005388300,\n",
+       "   'last_accessed_at': '2022-07-05T07:16:28Z',\n",
+       "   'last_access_time': 1657005388300,\n",
+       "   'last_accessor_id': '1000331006',\n",
+       "   'access_count': 0},\n",
+       "  'rov': {'mode': 0,\n",
+       "   'collaborator_ids': {},\n",
+       "   'member_roles': {'1000331006': {'user_iam_id': '1000331006',\n",
+       "     'roles': ['OWNER']}}},\n",
+       "  'name': 'managed-tmp_tiny_guides.json',\n",
+       "  'description': '',\n",
+       "  'tags': [],\n",
+       "  'asset_type': 'data_asset',\n",
+       "  'origin_country': 'de',\n",
+       "  'resource_key': 'managed-tmp_tiny_guides.json',\n",
+       "  'rating': 0.0,\n",
+       "  'total_ratings': 0,\n",
+       "  'catalog_id': '14d8ba82-5fcf-42e6-b4de-9e3ba2738141',\n",
+       "  'created': 1657005383064,\n",
+       "  'created_at': '2022-07-05T07:16:23Z',\n",
+       "  'owner_id': '1000331006',\n",
+       "  'size': 54,\n",
+       "  'version': 2.0,\n",
+       "  'asset_state': 'available',\n",
+       "  'asset_attributes': ['data_asset'],\n",
+       "  'asset_id': 'be4f9719-0d60-4374-88cd-74e4c16e90b6',\n",
+       "  'asset_category': 'USER',\n",
+       "  'creator_id': '1000331006'},\n",
+       " 'entity': {'data_asset': {'mime_type': 'application/json', 'dataset': False}},\n",
+       " 'attachments': [{'id': 'd652905e-a9d9-4028-8a3e-a6050a713727',\n",
+       "   'version': 2.0,\n",
+       "   'asset_type': 'data_asset',\n",
+       "   'mime': 'application/json',\n",
+       "   'datasource_type': '81bafdbd-b7c6-45c5-a4fd-6ec135f66f4e',\n",
+       "   'creator_id': '1000331006',\n",
+       "   'create_time': 1657005383065,\n",
+       "   'size': 54,\n",
+       "   'is_remote': False,\n",
+       "   'is_managed': True,\n",
+       "   'is_referenced': False,\n",
+       "   'is_object_key_read_only': False,\n",
+       "   'is_user_provided_path_key': False,\n",
+       "   'transfer_complete': True,\n",
+       "   'is_partitioned': False,\n",
+       "   'complete_time_ticks': 1657005388299,\n",
+       "   'user_data': {},\n",
+       "   'test_doc': 0,\n",
+       "   'handle': {'type': 'assetfiles',\n",
+       "    'key': '14d8ba82-5fcf-42e6-b4de-9e3ba2738141/be4f9719-0d60-4374-88cd-74e4c16e90b6/d652905e-a9d9-4028-8a3e-a6050a713727',\n",
+       "    'upload_id': 'done',\n",
+       "    'max_part_num': 1},\n",
+       "   'usage': {'access_count': 0.0,\n",
+       "    'last_accessor_id': '1000331006',\n",
+       "    'last_access_time': 1657005383065.0}}],\n",
+       " 'href': '/v2/assets/be4f9719-0d60-4374-88cd-74e4c16e90b6?catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'}"
+      ]
+     },
+     "execution_count": 33,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# lookup details from new managed asset\n",
+    "cpd_util.cpd_rest_request(\n",
+    "        cpd_conn, \"GET\", \"/v2/assets/\" + meta_managed[\"metadata\"][\"asset_id\"]\n",
+    "    ).json()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "distinct-bhutan",
+   "metadata": {
+    "id": "c539d3e8-ee03-4b2c-91b1-fdd80090be89"
+   },
+   "source": [
+    "### Option: Create asset with referenced file attachment\n",
+    "\n",
+    "The user controls the location/path of the uploaded file."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 34,
+   "id": "confidential-minneapolis",
+   "metadata": {
+    "id": "6d61819c-4196-4627-a03f-8116bd5efcbb",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "meta_referenced = None"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 35,
+   "id": "prospective-suicide",
+   "metadata": {
+    "id": "a1982720-47f4-4143-9558-ae83edb424c7",
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "curl -k -X PUT -H \"Authorization: Bearer $USER_ACCESS_TOKEN\" \\\n",
+      "    -F file=@path/to/your/file \\\n",
+      "    'https://internal-nginx-svc:12443/v2/asset_files/data_asset/tmp_tiny_guides.json?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141'\n",
+      "Request failed : 403\n",
+      "https://internal-nginx-svc:12443/v2/asset_files/data_asset/tmp_tiny_guides.json?version=2021-06-01&catalog_id=14d8ba82-5fcf-42e6-b4de-9e3ba2738141\n",
+      "exception: REST returned code 403 \"{\"code\":403,\"error\":\"Forbidden\",\"reason\":\"Permission denied to non service.\",\"message\":\"You do not have permission to perform this action.\"}\"\n"
+     ]
+    }
+   ],
+   "source": [
+    "try:\n",
+    "    \n",
+    "    # 1. Upload a local file to the CP4D asset volume\n",
+    "    #    PUT /v2/asset_files\n",
+    "    res = cpd_util.cpd_rest_request(\n",
+    "        cpd_conn, \"PUT\",f\"/v2/asset_files/{asset_type}/{filename}\",files={'file': open(filename, 'rb')})\n",
+    "    # print(\"PUT response\",res.status_code,res.text)\n",
+    "    # PUT response 201 {\"status\":\"Asset created: The asset was successfully uploaded.\"}\n",
+    "\n",
+    "    # 2. Create asset object\n",
+    "    #    POST /v2/assets\n",
+    "    newmeta = {\n",
+    "        \"metadata\": {\n",
+    "            \"name\": \"ref-\"+filename,\n",
+    "            \"asset_type\": asset_type,\n",
+    "            \"origin_country\": \"de\",  # required key in CP4D v3.0 and v3.5, incl 3.5.3\n",
+    "        },\n",
+    "        # \"entity\": {\"data_asset\": {\"mime_type\": mime, \"dataset\": False}},\n",
+    "        # \"dataset\":True would need an additional \"columns\" field, e.g. via Profile API\n",
+    "        # https://cloud.ibm.com/apidocs/watson-data-api-cpd#getting-an-asset\n",
+    "        \"entity\": {},  # works as well\n",
+    "        \"attachments\" : [{\n",
+    "            \"asset_type\": asset_type,\n",
+    "            \"mime\": mime,\n",
+    "            \"object_key\": f\"{asset_type}/{filename}\",  # = reference to uploaded file\n",
+    "            #'object_key_is_read_only': False  # is default\n",
+    "            #'object_key_is_read_only': True   # prevent automatic purge in DELETE asset\n",
+    "        }],\n",
+    "    }\n",
+    "    # POST {service_URL}/v2/assets?catalog_id={catalog_id}\n",
+    "    #from pprint import pprint; pprint(newmeta)\n",
+    "    meta_referenced = cpd_util.cpd_rest_request(\n",
+    "        cpd_conn, \"POST\", \"/v2/assets\", newmeta\n",
+    "    ).json()\n",
+    "    #asset_id = meta_referenced[\"metadata\"][\"asset_id\"]\n",
+    "except Exception as exc:\n",
+    "    # For catalog: 403,\"error\":\"Forbidden\",\"reason\":\"Permission denied to non service.\"\n",
+    "    print(\"exception:\",exc)\n",
+    "    pass"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "id": "oriental-sydney",
+   "metadata": {
+    "id": "c73d9456-8c2a-4adf-813a-7b0268a5cf2c",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# lookup details from new referenced asset\n",
+    "new_asset = None\n",
+    "if meta_referenced:\n",
+    "    new_asset = cpd_util.cpd_rest_request(\n",
+    "        cpd_conn, \"GET\", \"/v2/assets/\" + meta_referenced[\"metadata\"][\"asset_id\"]\n",
+    "    ).json()\n",
+    "new_asset"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "thorough-concert",
+   "metadata": {
+    "id": "0b658dad-203a-4c9a-96c5-0835c106ae91"
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "located-discharge",
+   "metadata": {
+    "id": "4f1881dc-6f5f-4e95-811a-adb702cc93a5"
+   },
+   "source": [
+    "### Publish an asset from a project to a catalog\n",
+    "\n",
+    "`POST /v2/assets/{asset_id}/publish`\n",
+    "\n",
+    "https://cloud.ibm.com/apidocs/watson-data-api-cpd#publish"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "id": "dying-rebel",
+   "metadata": {
+    "id": "20b9fee1-68bc-408d-be23-d7a734bc97fc",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "res = None\n",
+    "if not CATALOG_NAME:      # if asset has not already been created in a catalog\n",
+    "    # GET /v2/catalogs\n",
+    "    cat_name = \"name of a catalog to publish to\"\n",
+    "    cat_name=\"GregorCat\"\n",
+    "    cats = cpd_util.cpd_rest_request(cpd_conn, \"GET\", f\"/v2/catalogs\").json()\n",
+    "    catalog_id = next(cat[\"metadata\"][\"guid\"] for cat in cats[\"catalogs\"] if cat[\"entity\"][\"name\"] == cat_name)\n",
+    "    # next will raise StopIteration if env with given name does not exist\n",
+    "    \n",
+    "    new_asset_id = meta_referenced[\"metadata\"][\"asset_id\"]\n",
+    "    request_body = {\"mode\":0,\"catalog_id\": catalog_id}\n",
+    "    # optionally add query param:  ?duplicate_action=IGNORE\n",
+    "    res = cpd_util.cpd_rest_request(cpd_conn,\"POST\",f\"/v2/assets/{new_asset_id}/publish?duplicate_action=IGNORE\",postdata=request_body).json()\n",
+    "res"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "related-therapy",
+   "metadata": {
+    "id": "46072ac5-e046-4c19-bc89-2a3a61d1e35d"
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3.9",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
